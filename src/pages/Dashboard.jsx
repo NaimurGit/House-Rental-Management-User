@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 
 import {
@@ -17,6 +18,11 @@ import {
     createSpending,
 } from "../api/spendingApi";
 
+import {
+    getMonthlyCharges,
+    saveMonthlyCharge,
+} from "../api/monthlyChargeApi";
+
 import Navbar from "../components/Navbar";
 import ApartmentCard from "../components/Apartmentcard";
 import ApartmentModal from "../components/ApartmentModal";
@@ -24,6 +30,7 @@ import Summary from "../components/Summary";
 import MonthSelector from "../components/MonthSelector";
 import TransactionModal from "../components/Transactionmodal";
 import TransactionHistoryModal from "../components/TransactionHistoryModal";
+import MonthlyChargeModal from "../components/MonthlyChargeModal";
 
 const Dashboard = () => {
     // =====================================
@@ -34,9 +41,8 @@ const Dashboard = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
 
-    // Sort apartments naturally by their names
-    const sortApartments = (apartments) => {
-        return [...apartments].sort((a, b) =>
+    const sortApartments = (items) => {
+        return [...items].sort((a, b) =>
             a.name.localeCompare(b.name, undefined, {
                 numeric: true,
                 sensitivity: "base",
@@ -44,7 +50,6 @@ const Dashboard = () => {
         );
     };
 
-    // Fetch apartments from MongoDB
     useEffect(() => {
         const fetchApartments = async () => {
             try {
@@ -57,15 +62,12 @@ const Dashboard = () => {
                     (apartment) => ({
                         ...apartment,
                         id: apartment._id,
-                        paid: 0,
-                        due: 0,
                     })
                 );
 
                 setApartments(sortApartments(formattedApartments));
             } catch (error) {
                 console.error("Fetch apartments error:", error);
-
                 setError(
                     error.response?.data?.message ||
                     "Failed to load apartments. Please try again."
@@ -85,8 +87,6 @@ const Dashboard = () => {
     const [payments, setPayments] = useState([]);
     const [spendings, setSpendings] = useState([]);
 
-
-    // Fetch payments from MongoDB
     useEffect(() => {
         const fetchPayments = async () => {
             try {
@@ -111,7 +111,6 @@ const Dashboard = () => {
         fetchPayments();
     }, []);
 
-    // Fetch spendings from MongoDB
     useEffect(() => {
         const fetchSpendings = async () => {
             try {
@@ -136,7 +135,6 @@ const Dashboard = () => {
         fetchSpendings();
     }, []);
 
-
     // =====================================
     // 3. MONTH AND YEAR
     // =====================================
@@ -145,87 +143,227 @@ const Dashboard = () => {
     const [year, setYear] = useState(new Date().getFullYear());
 
     // =====================================
-    // 4. APARTMENT MODAL STATES
+    // 4. MONTHLY CHARGES
     // =====================================
 
-    const [isApartmentModalOpen, setIsApartmentModalOpen] =
-        useState(false);
+    const [monthlyCharges, setMonthlyCharges] = useState([]);
+    const [isChargeLoading, setIsChargeLoading] = useState(false);
 
-    const [selectedApartment, setSelectedApartment] =
-        useState(null);
+    useEffect(() => {
+        const fetchMonthlyCharges = async () => {
+            try {
+                setIsChargeLoading(true);
+
+                const data = await getMonthlyCharges(month, year);
+
+                setMonthlyCharges(data.monthlyCharges || []);
+            } catch (error) {
+                console.error("Fetch monthly charges error:", error);
+                alert(
+                    error.response?.data?.message ||
+                    "Failed to load monthly charges."
+                );
+            } finally {
+                setIsChargeLoading(false);
+            }
+        };
+
+        fetchMonthlyCharges();
+    }, [month, year, apartments.length]);
 
     // =====================================
-    // 5. TRANSACTION MODAL STATES
+    // 5. APARTMENT MODAL STATES
     // =====================================
 
-    const [isTransactionModalOpen, setIsTransactionModalOpen] =
-        useState(false);
-
-    const [transactionType, setTransactionType] =
-        useState("payment");
+    const [isApartmentModalOpen, setIsApartmentModalOpen] = useState(false);
+    const [selectedApartment, setSelectedApartment] = useState(null);
 
     // =====================================
-    // 6. HISTORY MODAL STATES
+    // 6. MONTHLY CHARGE MODAL STATES
     // =====================================
 
-    const [isHistoryModalOpen, setIsHistoryModalOpen] =
-        useState(false);
+    const [isChargeModalOpen, setIsChargeModalOpen] = useState(false);
+    const [selectedCharge, setSelectedCharge] = useState(null);
 
-    const [historyType, setHistoryType] =
-        useState("payment");
-
-    // =====================================
-    // 7. CALCULATE APARTMENT TOTAL
-    // =====================================
-
-    const getApartmentTotal = (apartment) => {
-        return (
-            Number(apartment.rent || 0) +
-            Number(apartment.water || 0) +
-            Number(apartment.garbage || 0) +
-            Number(apartment.service || 0) +
-            Number(apartment.due || 0)
+    const handleEditCharges = (apartment) => {
+        const charge = monthlyCharges.find(
+            (item) => item.apartmentId === apartment.id
         );
+
+        setSelectedApartment(apartment);
+        setSelectedCharge(charge || null);
+        setIsChargeModalOpen(true);
+    };
+
+    const handleSaveMonthlyCharge = async (chargeData) => {
+        try {
+            await saveMonthlyCharge(chargeData);
+
+            const data = await getMonthlyCharges(month, year);
+            setMonthlyCharges(data.monthlyCharges || []);
+
+            setIsChargeModalOpen(false);
+            setSelectedApartment(null);
+            setSelectedCharge(null);
+        } catch (error) {
+            console.error("Save monthly charge error:", error);
+
+            alert(
+                error.response?.data?.message ||
+                "Failed to save monthly charges."
+            );
+
+            throw error;
+        }
     };
 
     // =====================================
-    // 8. DASHBOARD SUMMARY
+    // 7. TRANSACTION MODAL STATES
     // =====================================
 
-    const totalPayments = payments.reduce(
-        (sum, payment) =>
-            sum + Number(payment.amount || 0),
-        0
+    const [isTransactionModalOpen, setIsTransactionModalOpen] = useState(false);
+    const [transactionType, setTransactionType] = useState("payment");
+
+    // =====================================
+    // 8. HISTORY MODAL STATES
+    // =====================================
+
+    const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
+    const [historyType, setHistoryType] = useState("payment");
+
+    // =====================================
+    // 9. DATE HELPERS
+    // =====================================
+
+    const isSelectedMonth = (date) => {
+        if (!date) return false;
+
+        const transactionDate = new Date(`${date}T00:00:00`);
+
+        return (
+            transactionDate.getMonth() === month &&
+            transactionDate.getFullYear() === year
+        );
+    };
+
+    const isBeforeSelectedMonth = (date) => {
+        if (!date) return false;
+
+        const transactionDate = new Date(`${date}T00:00:00`);
+        const selectedDate = new Date(year, month, 1);
+
+        return transactionDate < selectedDate;
+    };
+
+    // =====================================
+    // 10. SELECTED MONTH TRANSACTIONS
+    // =====================================
+
+    const selectedMonthPayments = payments.filter((payment) =>
+        isSelectedMonth(payment.date)
     );
 
-    const totalSpendings = spendings.reduce(
-        (sum, spending) =>
-            sum + Number(spending.amount || 0),
-        0
+    const selectedMonthSpendings = spendings.filter((spending) =>
+        isSelectedMonth(spending.date)
     );
 
-    const getApartmentPaid = (apartmentId) => {
-        return payments
-            .filter((payment) => payment.apartmentId === apartmentId)
+    // =====================================
+    // 11. CALCULATE APARTMENT FINANCIAL DATA
+    // =====================================
+
+    const getApartmentFinancialData = (apartment) => {
+        const monthlyCharge = monthlyCharges.find(
+            (item) => item.apartmentId === apartment.id
+        );
+
+        const rent = Number(monthlyCharge?.rent || 0);
+        const water = Number(monthlyCharge?.water || 0);
+        const garbage = Number(monthlyCharge?.garbage || 0);
+        const service = Number(monthlyCharge?.service || 0);
+
+        const currentMonthTotal = rent + water + garbage + service;
+
+        // Charges from all months before the selected month
+        const previousCharges = Number(
+            monthlyCharge?.previousCharges || 0
+        );
+
+        // Payments made before the selected month
+        const previousPayments = payments
+            .filter(
+                (payment) =>
+                    payment.apartmentId === apartment.id &&
+                    isBeforeSelectedMonth(payment.date)
+            )
             .reduce(
                 (sum, payment) => sum + Number(payment.amount || 0),
                 0
             );
+
+        // Previous unpaid amount
+        const previousDue = Math.max(
+            previousCharges - previousPayments,
+            0
+        );
+
+        // Payments made during the selected month
+        const paid = selectedMonthPayments
+            .filter((payment) => payment.apartmentId === apartment.id)
+            .reduce(
+                (sum, payment) => sum + Number(payment.amount || 0),
+                0
+            );
+
+        // Current month charges + previous outstanding due
+        const total = currentMonthTotal + previousDue;
+
+        const remaining = Math.max(total - paid, 0);
+
+        // Check whether this apartment has any spending this month
+        const hasSpending = selectedMonthSpendings.some(
+            (spending) => spending.apartmentId === apartment.id
+        );
+
+        return {
+            ...apartment,
+            rent,
+            water,
+            garbage,
+            service,
+            due: previousDue,
+            paid,
+            total,
+            remaining,
+            hasSpending,
+            isRed: remaining > 0 || hasSpending,
+        };
     };
 
-    const totalDue = apartments.reduce(
-        (sum, apartment) =>
-            sum +
-            Math.max(
-                getApartmentTotal(apartment) -
-                getApartmentPaid(apartment.id),
-                0
-            ),
+    const apartmentsWithFinancialData = apartments.map(
+        getApartmentFinancialData
+    );
+
+    // =====================================
+    // 12. DASHBOARD SUMMARY
+    // =====================================
+
+    const totalPayments = selectedMonthPayments.reduce(
+        (sum, payment) => sum + Number(payment.amount || 0),
+        0
+    );
+
+    const totalSpendings = selectedMonthSpendings.reduce(
+        (sum, spending) => sum + Number(spending.amount || 0),
+        0
+    );
+
+    const totalDue = apartmentsWithFinancialData.reduce(
+        (sum, apartment) => sum + apartment.remaining,
         0
     );
 
     // =====================================
-    // 9. ADD APARTMENT
+    // 13. ADD APARTMENT
     // =====================================
 
     const handleAddApartment = () => {
@@ -234,7 +372,7 @@ const Dashboard = () => {
     };
 
     // =====================================
-    // 10. EDIT APARTMENT
+    // 14. EDIT APARTMENT
     // =====================================
 
     const handleEditApartment = (apartment) => {
@@ -243,14 +381,12 @@ const Dashboard = () => {
     };
 
     // =====================================
-    // 11. CREATE / UPDATE APARTMENT
+    // 15. CREATE / UPDATE APARTMENT
     // =====================================
 
     const handleSaveApartment = async (apartmentData) => {
         try {
             if (selectedApartment) {
-                // UPDATE EXISTING APARTMENT
-
                 const data = await updateApartment(
                     selectedApartment.id,
                     apartmentData
@@ -259,8 +395,6 @@ const Dashboard = () => {
                 const updatedApartment = {
                     ...data.apartment,
                     id: data.apartment._id,
-                    paid: selectedApartment.paid || 0,
-                    due: selectedApartment.due || 0,
                 };
 
                 setApartments((previousApartments) =>
@@ -272,17 +406,12 @@ const Dashboard = () => {
                         )
                     )
                 );
-
             } else {
-                // CREATE NEW APARTMENT
-
                 const data = await createApartment(apartmentData);
 
                 const newApartment = {
                     ...data.apartment,
                     id: data.apartment._id,
-                    paid: 0,
-                    due: 0,
                 };
 
                 setApartments((previousApartments) =>
@@ -292,7 +421,6 @@ const Dashboard = () => {
 
             setIsApartmentModalOpen(false);
             setSelectedApartment(null);
-
         } catch (error) {
             console.error("Save apartment error:", error);
 
@@ -304,41 +432,42 @@ const Dashboard = () => {
     };
 
     // =====================================
-    // 12. DELETE APARTMENT
+    // 16. DELETE APARTMENT
     // =====================================
 
     const handleDeleteApartment = async (apartment) => {
         const confirmed = window.confirm(
-            `Are you sure you want to delete ${apartment.name}?Its payment history may also become disconnected.`
+            `Are you sure you want to delete ${apartment.name}? Its payment and spending history may also become disconnected.`
         );
 
         if (!confirmed) return;
 
         try {
-            // Delete from MongoDB first
             await deleteApartment(apartment.id);
 
-            // Update React state after successful deletion
             setApartments((previousApartments) =>
                 previousApartments.filter(
                     (item) => item.id !== apartment.id
                 )
             );
 
-            // Remove related local payment records
             setPayments((previousPayments) =>
                 previousPayments.filter(
                     (item) => item.apartmentId !== apartment.id
                 )
             );
 
-            // Remove related local spending records
             setSpendings((previousSpendings) =>
                 previousSpendings.filter(
                     (item) => item.apartmentId !== apartment.id
                 )
             );
 
+            setMonthlyCharges((previousCharges) =>
+                previousCharges.filter(
+                    (item) => item.apartmentId !== apartment.id
+                )
+            );
         } catch (error) {
             console.error("Delete apartment error:", error);
 
@@ -350,7 +479,7 @@ const Dashboard = () => {
     };
 
     // =====================================
-    // 13. ADD PAYMENT
+    // 17. ADD PAYMENT
     // =====================================
 
     const handleAddPayment = (apartment) => {
@@ -360,7 +489,7 @@ const Dashboard = () => {
     };
 
     // =====================================
-    // 14. ADD SPENDING
+    // 18. ADD SPENDING
     // =====================================
 
     const handleAddSpending = (apartment) => {
@@ -370,9 +499,8 @@ const Dashboard = () => {
     };
 
     // =====================================
-    // 15. SAVE PAYMENT OR SPENDING
+    // 19. SAVE PAYMENT OR SPENDING
     // =====================================
-
 
     const handleSaveTransaction = async (transaction) => {
         try {
@@ -403,9 +531,7 @@ const Dashboard = () => {
                     ...previousPayments,
                     formattedPayment,
                 ]);
-
             } else {
-                // Save spending to MongoDB
                 const data = await createSpending({
                     apartmentId: transaction.apartmentId,
                     amount: transaction.amount,
@@ -436,7 +562,6 @@ const Dashboard = () => {
 
             setIsTransactionModalOpen(false);
             setSelectedApartment(null);
-
         } catch (error) {
             console.error("Save transaction error:", error);
 
@@ -447,9 +572,8 @@ const Dashboard = () => {
         }
     };
 
-
     // =====================================
-    // 16. SHOW PAYMENT HISTORY
+    // 20. SHOW PAYMENT HISTORY
     // =====================================
 
     const handleShowPayments = (apartment) => {
@@ -459,7 +583,7 @@ const Dashboard = () => {
     };
 
     // =====================================
-    // 17. SHOW SPENDING HISTORY
+    // 21. SHOW SPENDING HISTORY
     // =====================================
 
     const handleShowSpendings = (apartment) => {
@@ -469,7 +593,7 @@ const Dashboard = () => {
     };
 
     // =====================================
-    // 18. GET SELECTED APARTMENT HISTORY
+    // 22. SELECTED APARTMENT HISTORY
     // =====================================
 
     const historyTransactions =
@@ -484,20 +608,17 @@ const Dashboard = () => {
             );
 
     // =====================================
-    // 19. DASHBOARD UI
+    // 23. DASHBOARD UI
     // =====================================
 
     return (
         <div className="min-h-screen bg-base-200">
-
-            {/* Navbar */}
             <Navbar />
 
             <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
 
                 {/* Dashboard Header */}
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
-
                     <div>
                         <h1 className="text-2xl sm:text-3xl font-bold">
                             Dashboard
@@ -515,7 +636,6 @@ const Dashboard = () => {
                         <span className="text-xl">+</span>
                         Add Apartment
                     </button>
-
                 </div>
 
                 {/* Month Selector */}
@@ -539,33 +659,25 @@ const Dashboard = () => {
 
                 {/* Apartment Heading */}
                 <div className="mb-5">
-                    <h2 className="text-xl font-bold">
-                        Apartments
-                    </h2>
+                    <h2 className="text-xl font-bold">Apartments</h2>
 
                     <p className="text-sm text-base-content/60 mt-1">
                         Total {apartments.length} apartments
                     </p>
                 </div>
 
-                {/* Loading State */}
                 {loading ? (
                     <div className="flex justify-center items-center py-16">
                         <span className="loading loading-spinner loading-lg text-primary"></span>
                         <span className="ml-3">Loading apartments...</span>
                     </div>
-
                 ) : error ? (
-
-                    /* Error State */
                     <div className="bg-base-100 rounded-xl border border-error p-8 text-center">
                         <h3 className="text-lg font-semibold text-error">
                             Something went wrong
                         </h3>
 
-                        <p className="text-base-content/60 mt-2">
-                            {error}
-                        </p>
+                        <p className="text-base-content/60 mt-2">{error}</p>
 
                         <button
                             onClick={() => window.location.reload()}
@@ -574,63 +686,43 @@ const Dashboard = () => {
                             Try Again
                         </button>
                     </div>
-
                 ) : apartments.length > 0 ? (
-
-                    /* Apartment Cards */
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                        {apartmentsWithFinancialData.map((apartment) => (
+                            <div key={apartment.id}>
+                                <ApartmentCard
+                                    apartment={apartment}
+                                    onShowPayments={handleShowPayments}
+                                    onAddPayment={handleAddPayment}
+                                    onShowSpendings={handleShowSpendings}
+                                    onAddSpending={handleAddSpending}
+                                    onEditCharges={handleEditCharges}
+                                />
 
-                        {apartments.map((apartment) => {
-                            const apartmentWithPayment = {
-                                ...apartment,
-                                paid: getApartmentPaid(apartment.id),
-                            };
+                                <div className="flex justify-end gap-2 mt-2">
+                                    <button
+                                        onClick={() =>
+                                            handleEditApartment(apartment)
+                                        }
+                                        className="btn btn-sm btn-outline btn-info"
+                                    >
+                                        Edit
+                                    </button>
 
-                            return (
-                                <div key={apartment.id}>
-
-                                    <ApartmentCard
-                                        apartment={apartmentWithPayment}
-                                        onShowPayments={handleShowPayments}
-                                        onAddPayment={handleAddPayment}
-                                        onShowSpendings={handleShowSpendings}
-                                        onAddSpending={handleAddSpending}
-                                    />
-
-                                    {/* Edit and Delete Buttons */}
-                                    <div className="flex justify-end gap-2 mt-2">
-
-                                        <button
-                                            onClick={() =>
-                                                handleEditApartment(apartment)
-                                            }
-                                            className="btn btn-sm btn-outline btn-info"
-                                        >
-                                            Edit
-                                        </button>
-
-                                        <button
-                                            onClick={() =>
-                                                handleDeleteApartment(apartment)
-                                            }
-                                            className="btn btn-sm btn-outline btn-error"
-                                        >
-                                            Delete
-                                        </button>
-
-                                    </div>
-
+                                    <button
+                                        onClick={() =>
+                                            handleDeleteApartment(apartment)
+                                        }
+                                        className="btn btn-sm btn-outline btn-error"
+                                    >
+                                        Delete
+                                    </button>
                                 </div>
-                            );
-                        })}
-
+                            </div>
+                        ))}
                     </div>
-
                 ) : (
-
-                    /* Empty State */
                     <div className="bg-base-100 rounded-xl border border-base-300 p-10 text-center">
-
                         <h3 className="text-lg font-semibold">
                             No Apartments Found
                         </h3>
@@ -645,16 +737,17 @@ const Dashboard = () => {
                         >
                             + Add Apartment
                         </button>
-
                     </div>
                 )}
 
+                {isChargeLoading && (
+                    <p className="text-sm text-base-content/60 mt-4">
+                        Updating monthly charges...
+                    </p>
+                )}
             </main>
 
-            {/* =====================================
-          ADD / EDIT APARTMENT MODAL
-      ===================================== */}
-
+            {/* ADD / EDIT APARTMENT MODAL */}
             {isApartmentModalOpen && (
                 <ApartmentModal
                     key={selectedApartment?.id ?? "new"}
@@ -668,10 +761,25 @@ const Dashboard = () => {
                 />
             )}
 
-            {/* =====================================
-          ADD PAYMENT / SPENDING MODAL
-      ===================================== */}
+            {/* MONTHLY CHARGE MODAL */}
+            {isChargeModalOpen && selectedApartment && (
+                <MonthlyChargeModal
+                    key={`${selectedApartment.id}-${month}-${year}`}
+                    isOpen={isChargeModalOpen}
+                    apartment={selectedApartment}
+                    month={month}
+                    year={year}
+                    monthlyCharge={selectedCharge}
+                    onClose={() => {
+                        setIsChargeModalOpen(false);
+                        setSelectedApartment(null);
+                        setSelectedCharge(null);
+                    }}
+                    onSave={handleSaveMonthlyCharge}
+                />
+            )}
 
+            {/* ADD PAYMENT / SPENDING MODAL */}
             {isTransactionModalOpen && selectedApartment && (
                 <TransactionModal
                     key={`${transactionType}-${selectedApartment.id}`}
@@ -685,10 +793,7 @@ const Dashboard = () => {
                 />
             )}
 
-            {/* =====================================
-          PAYMENT / SPENDING HISTORY MODAL
-      ===================================== */}
-
+            {/* PAYMENT / SPENDING HISTORY MODAL */}
             {isHistoryModalOpen && selectedApartment && (
                 <TransactionHistoryModal
                     type={historyType}
@@ -700,7 +805,6 @@ const Dashboard = () => {
                     }}
                 />
             )}
-
         </div>
     );
 };

@@ -1,23 +1,35 @@
 
-const months = [
-  "January", "February", "March",
-  "April", "May", "June",
-  "July", "August", "September",
-  "October", "November", "December"
-];
+const MonthSelector = ({
+  month,
+  setMonth,
+  year,
+  setYear,
+}) => {
+  const months = [
+    "January",
+    "February",
+    "March",
+    "April",
+    "May",
+    "June",
+    "July",
+    "August",
+    "September",
+    "October",
+    "November",
+    "December",
+  ];
 
-function MonthSelector({ month, year, setMonth, setYear }) {
   return (
-    <div className="flex items-center gap-2">
-
+    <div className="flex flex-wrap items-center gap-3">
       <select
         className="select select-bordered"
         value={month}
-        onChange={(e) => setMonth(e.target.value)}
+        onChange={(e) => setMonth(Number(e.target.value))}
       >
-        {months.map((m) => (
-          <option key={m} value={m}>
-            {m}
+        {months.map((monthName, index) => (
+          <option key={monthName} value={index}>
+            {monthName}
           </option>
         ))}
       </select>
@@ -25,17 +37,19 @@ function MonthSelector({ month, year, setMonth, setYear }) {
       <select
         className="select select-bordered"
         value={year}
-        onChange={(e) => setYear(e.target.value)}
+        onChange={(e) => setYear(Number(e.target.value))}
       >
-        {[2025, 2026, 2027, 2028].map((y) => (
-          <option key={y} value={y}>
-            {y}
+        {Array.from(
+          { length: 11 },
+          (_, index) => new Date().getFullYear() - 5 + index
+        ).map((yearValue) => (
+          <option key={yearValue} value={yearValue}>
+            {yearValue}
           </option>
         ))}
       </select>
-
     </div>
   );
-}
+};
 
 export default MonthSelector;
