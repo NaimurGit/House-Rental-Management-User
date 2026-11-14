@@ -29,6 +29,10 @@ import {
     showConfirm,
 } from "../utils/swal";
 
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
+import * as XLSX from "xlsx";
+
 import Navbar from "../components/Navbar";
 import ApartmentCard from "../components/Apartmentcard";
 import ApartmentModal from "../components/ApartmentModal";
@@ -126,9 +130,8 @@ const Dashboard = () => {
 
                 const formattedSpendings = data.spendings.map((spending) => ({
                     id: spending._id,
-                    apartmentId: spending.apartment?._id,
-                    apartmentName:
-                        spending.apartment?.name || "Unknown Apartment",
+                    apartmentId: spending.apartment?._id || null,
+                    apartmentName: spending.apartment?.name || "General",
                     amount: Number(spending.amount),
                     date: spending.date?.slice(0, 10),
                     description: spending.description || "",
@@ -188,14 +191,20 @@ const Dashboard = () => {
     }, [month, year, apartments.length]);
 
     // =====================================
-    // 5. APARTMENT MODAL STATES
+    // 5. MENU STATE
+    // =====================================
+
+    const [isMenuOpen, setIsMenuOpen] = useState(false);
+
+    // =====================================
+    // 6. APARTMENT MODAL STATES
     // =====================================
 
     const [isApartmentModalOpen, setIsApartmentModalOpen] = useState(false);
     const [selectedApartment, setSelectedApartment] = useState(null);
 
     // =====================================
-    // 6. MONTHLY CHARGE MODAL STATES
+    // 7. MONTHLY CHARGE MODAL STATES
     // =====================================
 
     const [isChargeModalOpen, setIsChargeModalOpen] = useState(false);
@@ -235,7 +244,7 @@ const Dashboard = () => {
     };
 
     // =====================================
-    // 7. TRANSACTION MODAL STATES
+    // 8. TRANSACTION MODAL STATES
     // =====================================
 
     const [isTransactionModalOpen, setIsTransactionModalOpen] =
@@ -244,14 +253,14 @@ const Dashboard = () => {
     const [transactionType, setTransactionType] = useState("payment");
 
     // =====================================
-    // 8. HISTORY MODAL STATES
+    // 9. HISTORY MODAL STATES
     // =====================================
 
     const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
     const [historyType, setHistoryType] = useState("payment");
 
     // =====================================
-    // 9. DATE HELPERS
+    // 10. DATE HELPERS
     // =====================================
 
     const isSelectedMonth = (date) => {
@@ -275,7 +284,7 @@ const Dashboard = () => {
     };
 
     // =====================================
-    // 10. SELECTED MONTH TRANSACTIONS
+    // 11. SELECTED MONTH TRANSACTIONS
     // =====================================
 
     const selectedMonthPayments = payments.filter((payment) =>
@@ -286,8 +295,12 @@ const Dashboard = () => {
         isSelectedMonth(spending.date)
     );
 
+    const selectedMonthGeneralSpendings = selectedMonthSpendings.filter(
+        (spending) => !spending.apartmentId
+    );
+
     // =====================================
-    // 11. CALCULATE APARTMENT FINANCIAL DATA
+    // 12. CALCULATE APARTMENT FINANCIAL DATA
     // =====================================
 
     const getApartmentFinancialData = (apartment) => {
@@ -302,12 +315,10 @@ const Dashboard = () => {
 
         const currentMonthTotal = rent + water + garbage + service;
 
-        // Previous months' charges
         const previousCharges = Number(
             monthlyCharge?.previousCharges || 0
         );
 
-        // Previous months' payments
         const previousPayments = payments
             .filter(
                 (payment) =>
@@ -319,13 +330,11 @@ const Dashboard = () => {
                 0
             );
 
-        // Previous unpaid amount
         const previousDue = Math.max(
             previousCharges - previousPayments,
             0
         );
 
-        // Selected month's payments
         const paid = selectedMonthPayments
             .filter((payment) => payment.apartmentId === apartment.id)
             .reduce(
@@ -333,12 +342,10 @@ const Dashboard = () => {
                 0
             );
 
-        // Current charges + previous due
         const total = currentMonthTotal + previousDue;
 
         const remaining = Math.max(total - paid, 0);
 
-        // Check selected month spending
         const hasSpending = selectedMonthSpendings.some(
             (spending) => spending.apartmentId === apartment.id
         );
@@ -363,7 +370,7 @@ const Dashboard = () => {
     );
 
     // =====================================
-    // 12. DASHBOARD SUMMARY
+    // 13. DASHBOARD SUMMARY
     // =====================================
 
     const totalPayments = selectedMonthPayments.reduce(
@@ -382,7 +389,7 @@ const Dashboard = () => {
     );
 
     // =====================================
-    // 13. ADD APARTMENT
+    // 14. ADD APARTMENT
     // =====================================
 
     const handleAddApartment = () => {
@@ -391,7 +398,7 @@ const Dashboard = () => {
     };
 
     // =====================================
-    // 14. EDIT APARTMENT
+    // 15. EDIT APARTMENT
     // =====================================
 
     const handleEditApartment = (apartment) => {
@@ -400,7 +407,7 @@ const Dashboard = () => {
     };
 
     // =====================================
-    // 15. CREATE / UPDATE APARTMENT
+    // 16. CREATE / UPDATE APARTMENT
     // =====================================
 
     const handleSaveApartment = async (apartmentData) => {
@@ -408,7 +415,6 @@ const Dashboard = () => {
 
         try {
             if (selectedApartment) {
-                // Update existing apartment
                 const data = await updateApartment(
                     selectedApartment.id,
                     apartmentData
@@ -434,7 +440,6 @@ const Dashboard = () => {
                     )
                 );
             } else {
-                // Create new apartment
                 const data = await createApartment(apartmentData);
 
                 apartmentId = data.apartment._id;
@@ -449,8 +454,6 @@ const Dashboard = () => {
                 );
             }
 
-            // SAVE ALL FOUR BILLS TO MONTHLY CHARGES
-
             await saveMonthlyCharge({
                 apartmentId,
                 month,
@@ -461,7 +464,6 @@ const Dashboard = () => {
                 service: Number(apartmentData.service || 0),
             });
 
-            // Refresh selected month's charges
             await refreshMonthlyCharges();
 
             setIsApartmentModalOpen(false);
@@ -476,8 +478,6 @@ const Dashboard = () => {
         } catch (error) {
             console.error("Save apartment error:", error);
 
-            // If creating the apartment succeeded but saving its
-            // monthly charges failed, try to remove the new apartment.
             if (!selectedApartment && apartmentId) {
                 try {
                     await deleteApartment(apartmentId);
@@ -505,7 +505,7 @@ const Dashboard = () => {
     };
 
     // =====================================
-    // 16. DELETE APARTMENT
+    // 17. DELETE APARTMENT
     // =====================================
 
     const handleDeleteApartment = async (apartment) => {
@@ -555,7 +555,7 @@ const Dashboard = () => {
     };
 
     // =====================================
-    // 17. ADD PAYMENT
+    // 18. ADD PAYMENT
     // =====================================
 
     const handleAddPayment = (apartment) => {
@@ -565,7 +565,7 @@ const Dashboard = () => {
     };
 
     // =====================================
-    // 18. ADD SPENDING
+    // 19. ADD APARTMENT SPENDING
     // =====================================
 
     const handleAddSpending = (apartment) => {
@@ -575,7 +575,18 @@ const Dashboard = () => {
     };
 
     // =====================================
-    // 19. SAVE PAYMENT OR SPENDING
+    // 20. ADD GENERAL SPENDING
+    // =====================================
+
+    const handleAddGeneralSpending = () => {
+        setSelectedApartment(null);
+        setTransactionType("spending");
+        setIsTransactionModalOpen(true);
+        setIsMenuOpen(false);
+    };
+
+    // =====================================
+    // 21. SAVE PAYMENT OR SPENDING
     // =====================================
 
     const handleSaveTransaction = async (transaction) => {
@@ -609,9 +620,10 @@ const Dashboard = () => {
                     ...previousPayments,
                     formattedPayment,
                 ]);
+
             } else {
                 const data = await createSpending({
-                    apartmentId: transaction.apartmentId,
+                    apartmentId: transaction.apartmentId || undefined,
                     amount: transaction.amount,
                     date: transaction.date,
                     category: transaction.category,
@@ -624,10 +636,12 @@ const Dashboard = () => {
                     id: savedSpending._id,
                     apartmentId:
                         savedSpending.apartment?._id ||
-                        transaction.apartmentId,
+                        transaction.apartmentId ||
+                        null,
                     apartmentName:
                         savedSpending.apartment?.name ||
-                        transaction.apartmentName,
+                        transaction.apartmentName ||
+                        "General",
                     amount: Number(savedSpending.amount),
                     date: savedSpending.date?.slice(0, 10),
                     description: savedSpending.description || "",
@@ -660,7 +674,7 @@ const Dashboard = () => {
     };
 
     // =====================================
-    // 20. SHOW PAYMENT HISTORY
+    // 22. SHOW PAYMENT HISTORY
     // =====================================
 
     const handleShowPayments = (apartment) => {
@@ -670,7 +684,7 @@ const Dashboard = () => {
     };
 
     // =====================================
-    // 21. SHOW SPENDING HISTORY
+    // 23. SHOW APARTMENT SPENDING HISTORY
     // =====================================
 
     const handleShowSpendings = (apartment) => {
@@ -680,7 +694,18 @@ const Dashboard = () => {
     };
 
     // =====================================
-    // 22. SELECTED APARTMENT HISTORY
+    // 24. SHOW GENERAL SPENDING
+    // =====================================
+
+    const handleShowGeneralSpendings = () => {
+        setSelectedApartment(null);
+        setHistoryType("general");
+        setIsHistoryModalOpen(true);
+        setIsMenuOpen(false);
+    };
+
+    // =====================================
+    // 25. SELECTED HISTORY TRANSACTIONS
     // =====================================
 
     const historyTransactions =
@@ -689,13 +714,193 @@ const Dashboard = () => {
                 (payment) =>
                     payment.apartmentId === selectedApartment?.id
             )
-            : spendings.filter(
-                (spending) =>
-                    spending.apartmentId === selectedApartment?.id
-            );
+            : historyType === "general"
+                ? selectedMonthGeneralSpendings
+                : spendings.filter(
+                    (spending) =>
+                        spending.apartmentId === selectedApartment?.id
+                );
 
     // =====================================
-    // 23. DASHBOARD UI
+    // 26. MONTHLY BILL EXPORT HELPERS
+    // =====================================
+
+    const getMonthName = () => {
+        return new Date(year, month).toLocaleString("en-US", {
+            month: "long",
+        });
+    };
+
+    const formatExportCurrency = (amount) => {
+        return Number(amount || 0).toLocaleString("en-BD");
+    };
+
+    // =====================================
+    // 27. EXPORT MONTHLY BILL AS PDF
+    // =====================================
+
+    const handleExportPDF = () => {
+        try {
+            const doc = new jsPDF({
+                orientation: "landscape",
+            });
+
+            const monthName = getMonthName();
+
+            doc.setFontSize(18);
+            doc.text("House Rent Management", 14, 18);
+
+            doc.setFontSize(12);
+            doc.text(
+                `Monthly Bill - ${monthName} ${year}`,
+                14,
+                27
+            );
+
+            const tableData = apartmentsWithFinancialData.map(
+                (apartment) => [
+                    apartment.name,
+                    formatExportCurrency(apartment.rent),
+                    formatExportCurrency(apartment.water),
+                    formatExportCurrency(apartment.garbage),
+                    formatExportCurrency(apartment.service),
+                    formatExportCurrency(apartment.due),
+                    formatExportCurrency(apartment.total),
+                    formatExportCurrency(apartment.paid),
+                    formatExportCurrency(apartment.remaining),
+                ]
+            );
+
+            autoTable(doc, {
+                startY: 35,
+                head: [[
+                    "Apartment",
+                    "Rent",
+                    "Water",
+                    "Garbage",
+                    "Service",
+                    "Previous Due",
+                    "Total Bill",
+                    "Paid",
+                    "Remaining",
+                ]],
+                body: tableData,
+                styles: {
+                    fontSize: 8,
+                    cellPadding: 3,
+                },
+                headStyles: {
+                    fillColor: [41, 128, 185],
+                },
+            });
+
+            let finalY = doc.lastAutoTable?.finalY || 35;
+
+            finalY += 12;
+
+            doc.setFontSize(11);
+
+            doc.text(
+                `Total Payments: BDT ${formatExportCurrency(totalPayments)}`,
+                14,
+                finalY
+            );
+
+            doc.text(
+                `Total Remaining Due: BDT ${formatExportCurrency(totalDue)}`,
+                14,
+                finalY + 8
+            );
+
+            doc.text(
+                `Total Monthly Spendings: BDT ${formatExportCurrency(totalSpendings)}`,
+                14,
+                finalY + 16
+            );
+
+            doc.save(`Monthly_Bill_${monthName}_${year}.pdf`);
+
+            setIsMenuOpen(false);
+
+        } catch (error) {
+            console.error("PDF export error:", error);
+            showError("Failed to generate PDF. Please try again.");
+        }
+    };
+
+    // =====================================
+    // 28. EXPORT MONTHLY BILL AS EXCEL
+    // =====================================
+
+    const handleExportExcel = () => {
+        try {
+            const monthName = getMonthName();
+
+            const billData = apartmentsWithFinancialData.map(
+                (apartment) => ({
+                    Apartment: apartment.name,
+                    "House Rent": apartment.rent,
+                    "Water Bill": apartment.water,
+                    "Garbage Bill": apartment.garbage,
+                    "Service Charge": apartment.service,
+                    "Previous Due": apartment.due,
+                    "Total Bill": apartment.total,
+                    "Paid This Month": apartment.paid,
+                    "Remaining Due": apartment.remaining,
+                })
+            );
+
+            const spendingData = selectedMonthSpendings.map(
+                (spending) => ({
+                    Date: spending.date,
+                    Apartment: spending.apartmentName,
+                    Category: spending.category,
+                    Description: spending.description,
+                    Amount: spending.amount,
+                })
+            );
+
+            const workbook = XLSX.utils.book_new();
+
+            const billWorksheet = XLSX.utils.json_to_sheet(
+                billData.length > 0
+                    ? billData
+                    : [{ Message: "No apartments found" }]
+            );
+
+            XLSX.utils.book_append_sheet(
+                workbook,
+                billWorksheet,
+                "Monthly Bills"
+            );
+
+            const spendingWorksheet = XLSX.utils.json_to_sheet(
+                spendingData.length > 0
+                    ? spendingData
+                    : [{ Message: "No spending records for this month" }]
+            );
+
+            XLSX.utils.book_append_sheet(
+                workbook,
+                spendingWorksheet,
+                "Monthly Spendings"
+            );
+
+            XLSX.writeFile(
+                workbook,
+                `Monthly_Bill_${monthName}_${year}.xlsx`
+            );
+
+            setIsMenuOpen(false);
+
+        } catch (error) {
+            console.error("Excel export error:", error);
+            showError("Failed to generate Excel file. Please try again.");
+        }
+    };
+
+    // =====================================
+    // 29. DASHBOARD UI
     // =====================================
 
     return (
@@ -706,6 +911,7 @@ const Dashboard = () => {
 
                 {/* Dashboard Header */}
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
+
                     <div>
                         <h1 className="text-2xl sm:text-3xl font-bold">
                             Dashboard
@@ -716,13 +922,85 @@ const Dashboard = () => {
                         </p>
                     </div>
 
-                    <button
-                        onClick={handleAddApartment}
-                        className="btn btn-primary"
-                    >
-                        <span className="text-xl">+</span>
-                        Add Apartment
-                    </button>
+                    {/* THREE DOT MENU */}
+                    <div className="relative">
+
+                        <button
+                            onClick={() =>
+                                setIsMenuOpen((previous) => !previous)
+                            }
+                            className="btn btn-square btn-outline"
+                            aria-label="Dashboard options"
+                            aria-expanded={isMenuOpen}
+                        >
+                            <span className="text-2xl leading-none">
+                                ⋮
+                            </span>
+                        </button>
+
+                        {isMenuOpen && (
+                            <>
+                                <button
+                                    type="button"
+                                    className="fixed inset-0 z-40 cursor-default"
+                                    onClick={() => setIsMenuOpen(false)}
+                                    aria-label="Close menu"
+                                />
+
+                                <div className="absolute right-0 top-full mt-2 w-64 bg-base-100 rounded-xl shadow-xl border border-base-300 z-50 p-2">
+
+                                    <button
+                                        onClick={() => {
+                                            setIsMenuOpen(false);
+                                            handleAddApartment();
+                                        }}
+                                        className="w-full text-left px-4 py-3 rounded-lg hover:bg-base-200 flex items-center gap-3"
+                                    >
+                                        <span className="text-lg">＋</span>
+                                        Add Apartment
+                                    </button>
+
+                                    <div className="divider my-1"></div>
+
+                                    <button
+                                        onClick={handleExportPDF}
+                                        className="w-full text-left px-4 py-3 rounded-lg hover:bg-base-200 flex items-center gap-3"
+                                    >
+                                        <span>📄</span>
+                                        Print Monthly Bill (PDF)
+                                    </button>
+
+                                    <button
+                                        onClick={handleExportExcel}
+                                        className="w-full text-left px-4 py-3 rounded-lg hover:bg-base-200 flex items-center gap-3"
+                                    >
+                                        <span>📊</span>
+                                        Export Monthly Bill (Excel)
+                                    </button>
+
+                                    <div className="divider my-1"></div>
+
+                                    <button
+                                        onClick={handleShowGeneralSpendings}
+                                        className="w-full text-left px-4 py-3 rounded-lg hover:bg-base-200 flex items-center gap-3"
+                                    >
+                                        <span>📋</span>
+                                        Show General Spending
+                                    </button>
+
+                                    <button
+                                        onClick={handleAddGeneralSpending}
+                                        className="w-full text-left px-4 py-3 rounded-lg hover:bg-base-200 flex items-center gap-3"
+                                    >
+                                        <span>＋</span>
+                                        Add General Spending
+                                    </button>
+
+                                </div>
+                            </>
+                        )}
+
+                    </div>
                 </div>
 
                 {/* Month Selector */}
@@ -746,7 +1024,9 @@ const Dashboard = () => {
 
                 {/* Apartment Heading */}
                 <div className="mb-5">
-                    <h2 className="text-xl font-bold">Apartments</h2>
+                    <h2 className="text-xl font-bold">
+                        Apartments
+                    </h2>
 
                     <p className="text-sm text-base-content/60 mt-1">
                         Total {apartments.length} apartments
@@ -756,15 +1036,20 @@ const Dashboard = () => {
                 {loading ? (
                     <div className="flex justify-center items-center py-16">
                         <span className="loading loading-spinner loading-lg text-primary"></span>
-                        <span className="ml-3">Loading apartments...</span>
+                        <span className="ml-3">
+                            Loading apartments...
+                        </span>
                     </div>
                 ) : error ? (
                     <div className="bg-base-100 rounded-xl border border-error p-8 text-center">
+
                         <h3 className="text-lg font-semibold text-error">
                             Something went wrong
                         </h3>
 
-                        <p className="text-base-content/60 mt-2">{error}</p>
+                        <p className="text-base-content/60 mt-2">
+                            {error}
+                        </p>
 
                         <button
                             onClick={() => window.location.reload()}
@@ -772,11 +1057,14 @@ const Dashboard = () => {
                         >
                             Try Again
                         </button>
+
                     </div>
                 ) : apartments.length > 0 ? (
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+
                         {apartmentsWithFinancialData.map((apartment) => (
                             <div key={apartment.id}>
+
                                 <ApartmentCard
                                     apartment={apartment}
                                     onShowPayments={handleShowPayments}
@@ -787,6 +1075,7 @@ const Dashboard = () => {
                                 />
 
                                 <div className="flex justify-end gap-2 mt-2">
+
                                     <button
                                         onClick={() =>
                                             handleEditApartment(apartment)
@@ -804,12 +1093,15 @@ const Dashboard = () => {
                                     >
                                         Delete
                                     </button>
+
                                 </div>
                             </div>
                         ))}
+
                     </div>
                 ) : (
                     <div className="bg-base-100 rounded-xl border border-base-300 p-10 text-center">
+
                         <h3 className="text-lg font-semibold">
                             No Apartments Found
                         </h3>
@@ -824,6 +1116,7 @@ const Dashboard = () => {
                         >
                             + Add Apartment
                         </button>
+
                     </div>
                 )}
 
@@ -832,6 +1125,7 @@ const Dashboard = () => {
                         Updating monthly charges...
                     </p>
                 )}
+
             </main>
 
             {/* ADD / EDIT APARTMENT MODAL */}
@@ -867,11 +1161,16 @@ const Dashboard = () => {
             )}
 
             {/* ADD PAYMENT / SPENDING MODAL */}
-            {isTransactionModalOpen && selectedApartment && (
+            {isTransactionModalOpen && (
                 <TransactionModal
-                    key={`${transactionType}-${selectedApartment.id}`}
+                    key={`${transactionType}-${selectedApartment?.id || "general"}`}
                     type={transactionType}
-                    apartment={selectedApartment}
+                    apartment={
+                        selectedApartment || {
+                            id: null,
+                            name: "General Spending",
+                        }
+                    }
                     onClose={() => {
                         setIsTransactionModalOpen(false);
                         setSelectedApartment(null);
@@ -881,7 +1180,7 @@ const Dashboard = () => {
             )}
 
             {/* PAYMENT / SPENDING HISTORY MODAL */}
-            {isHistoryModalOpen && selectedApartment && (
+            {isHistoryModalOpen && (
                 <TransactionHistoryModal
                     type={historyType}
                     apartment={selectedApartment}
@@ -892,6 +1191,7 @@ const Dashboard = () => {
                     }}
                 />
             )}
+
         </div>
     );
 };

@@ -24,19 +24,25 @@ const TransactionModal = ({
   const [category, setCategory] = useState("Maintenance");
 
   const isPayment = type === "payment";
+  const isGeneralSpending = !isPayment && !apartment?.id;
 
   const handleSubmit = (e) => {
     e.preventDefault();
 
-    if (!amount || Number(amount) <= 0 || !date) {
+    if (
+      !amount ||
+      !Number.isFinite(Number(amount)) ||
+      Number(amount) <= 0 ||
+      !date
+    ) {
       showWarning("Please enter a valid amount and date.");
       return;
     }
 
     const transaction = {
       id: Date.now(),
-      apartmentId: apartment.id,
-      apartmentName: apartment.name,
+      apartmentId: apartment?.id || null,
+      apartmentName: apartment?.name || "General",
       amount: Number(amount),
       date,
       description: description.trim(),
@@ -54,11 +60,12 @@ const TransactionModal = ({
         </h3>
 
         <p className="text-sm text-base-content/60 mb-5">
-          {apartment.name}
+          {isGeneralSpending
+            ? "General Spending"
+            : apartment?.name || "Apartment"}
         </p>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-
           {/* Amount */}
           <div>
             <label className="label">
@@ -69,7 +76,7 @@ const TransactionModal = ({
 
             <input
               type="number"
-              min="1"
+              min="0.01"
               step="0.01"
               placeholder="Enter amount"
               className="input input-bordered w-full"
@@ -96,7 +103,7 @@ const TransactionModal = ({
             />
           </div>
 
-          {/* Payment Method */}
+          {/* Payment Method or Spending Category */}
           {isPayment ? (
             <div>
               <label className="label">
@@ -175,7 +182,6 @@ const TransactionModal = ({
               {isPayment ? "Save Payment" : "Save Spending"}
             </button>
           </div>
-
         </form>
       </div>
 

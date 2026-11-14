@@ -6,9 +6,10 @@ const TransactionHistoryModal = ({
   onClose,
 }) => {
   const isPayment = type === "payment";
+  const isGeneral = type === "general";
 
   const formatCurrency = (amount) =>
-    `৳${Number(amount).toLocaleString("en-BD")}`;
+    `৳${Number(amount || 0).toLocaleString("en-BD")}`;
 
   const formatDate = (date) => {
     if (!date) return "-";
@@ -25,19 +26,24 @@ const TransactionHistoryModal = ({
     0
   );
 
+  const title = isPayment
+    ? "Payment History"
+    : isGeneral
+      ? "General Spending"
+      : "Spending History";
+
+  const subtitle = isGeneral
+    ? "All general expenses"
+    : apartment?.name || "Apartment";
+
   return (
     <div className="modal modal-open">
       <div className="modal-box max-w-2xl">
-
-        {/* Header */}
         <div className="flex justify-between items-start gap-3">
           <div>
-            <h3 className="text-xl font-bold">
-              {isPayment ? "Payment History" : "Spending History"}
-            </h3>
-
+            <h3 className="text-xl font-bold">{title}</h3>
             <p className="text-sm text-base-content/60 mt-1">
-              {apartment.name}
+              {subtitle}
             </p>
           </div>
 
@@ -50,7 +56,6 @@ const TransactionHistoryModal = ({
           </button>
         </div>
 
-        {/* Total */}
         <div className="bg-base-200 rounded-lg p-4 mt-5 mb-5">
           <p className="text-sm text-base-content/60">
             Total {isPayment ? "Payments" : "Spendings"}
@@ -65,14 +70,13 @@ const TransactionHistoryModal = ({
           </p>
         </div>
 
-        {/* Transaction List */}
         {transactions.length > 0 ? (
           <div className="overflow-x-auto">
             <table className="table table-zebra">
-
               <thead>
                 <tr>
                   <th>Date</th>
+                  {isGeneral && <th>Apartment</th>}
                   <th>{isPayment ? "Method" : "Category"}</th>
                   <th>Description</th>
                   <th className="text-right">Amount</th>
@@ -85,6 +89,10 @@ const TransactionHistoryModal = ({
                     <td className="whitespace-nowrap">
                       {formatDate(item.date)}
                     </td>
+
+                    {isGeneral && (
+                      <td>{item.apartmentName || "General"}</td>
+                    )}
 
                     <td>
                       {isPayment ? item.method : item.category}
@@ -102,7 +110,6 @@ const TransactionHistoryModal = ({
                   </tr>
                 ))}
               </tbody>
-
             </table>
           </div>
         ) : (
@@ -113,13 +120,11 @@ const TransactionHistoryModal = ({
           </div>
         )}
 
-        {/* Footer */}
         <div className="modal-action">
           <button onClick={onClose} className="btn btn-primary">
             Close
           </button>
         </div>
-
       </div>
 
       <button
