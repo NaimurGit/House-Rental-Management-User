@@ -1,5 +1,6 @@
 
 import { useState } from "react";
+import { showWarning } from "../utils/swal";
 
 const getToday = () => {
   const today = new Date();
@@ -28,7 +29,7 @@ const TransactionModal = ({
     e.preventDefault();
 
     if (!amount || Number(amount) <= 0 || !date) {
-      alert("Please enter a valid amount and date.");
+      showWarning("Please enter a valid amount and date.");
       return;
     }
 

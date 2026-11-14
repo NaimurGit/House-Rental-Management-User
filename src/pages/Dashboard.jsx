@@ -23,6 +23,12 @@ import {
     saveMonthlyCharge,
 } from "../api/monthlyChargeApi";
 
+import {
+    showSuccess,
+    showError,
+    showConfirm,
+} from "../utils/swal";
+
 import Navbar from "../components/Navbar";
 import ApartmentCard from "../components/Apartmentcard";
 import ApartmentModal from "../components/ApartmentModal";
@@ -68,6 +74,7 @@ const Dashboard = () => {
                 setApartments(sortApartments(formattedApartments));
             } catch (error) {
                 console.error("Fetch apartments error:", error);
+
                 setError(
                     error.response?.data?.message ||
                     "Failed to load apartments. Please try again."
@@ -95,7 +102,8 @@ const Dashboard = () => {
                 const formattedPayments = data.payments.map((payment) => ({
                     id: payment._id,
                     apartmentId: payment.apartment?._id,
-                    apartmentName: payment.apartment?.name || "Unknown Apartment",
+                    apartmentName:
+                        payment.apartment?.name || "Unknown Apartment",
                     amount: Number(payment.amount),
                     date: payment.date?.slice(0, 10),
                     description: payment.description || "",
@@ -119,7 +127,8 @@ const Dashboard = () => {
                 const formattedSpendings = data.spendings.map((spending) => ({
                     id: spending._id,
                     apartmentId: spending.apartment?._id,
-                    apartmentName: spending.apartment?.name || "Unknown Apartment",
+                    apartmentName:
+                        spending.apartment?.name || "Unknown Apartment",
                     amount: Number(spending.amount),
                     date: spending.date?.slice(0, 10),
                     description: spending.description || "",
@@ -149,6 +158,12 @@ const Dashboard = () => {
     const [monthlyCharges, setMonthlyCharges] = useState([]);
     const [isChargeLoading, setIsChargeLoading] = useState(false);
 
+    const refreshMonthlyCharges = async () => {
+        const data = await getMonthlyCharges(month, year);
+
+        setMonthlyCharges(data.monthlyCharges || []);
+    };
+
     useEffect(() => {
         const fetchMonthlyCharges = async () => {
             try {
@@ -159,7 +174,8 @@ const Dashboard = () => {
                 setMonthlyCharges(data.monthlyCharges || []);
             } catch (error) {
                 console.error("Fetch monthly charges error:", error);
-                alert(
+
+                showError(
                     error.response?.data?.message ||
                     "Failed to load monthly charges."
                 );
@@ -199,16 +215,17 @@ const Dashboard = () => {
         try {
             await saveMonthlyCharge(chargeData);
 
-            const data = await getMonthlyCharges(month, year);
-            setMonthlyCharges(data.monthlyCharges || []);
+            await refreshMonthlyCharges();
 
             setIsChargeModalOpen(false);
             setSelectedApartment(null);
             setSelectedCharge(null);
+
+            await showSuccess("Monthly charges saved successfully!");
         } catch (error) {
             console.error("Save monthly charge error:", error);
 
-            alert(
+            showError(
                 error.response?.data?.message ||
                 "Failed to save monthly charges."
             );
@@ -221,7 +238,9 @@ const Dashboard = () => {
     // 7. TRANSACTION MODAL STATES
     // =====================================
 
-    const [isTransactionModalOpen, setIsTransactionModalOpen] = useState(false);
+    const [isTransactionModalOpen, setIsTransactionModalOpen] =
+        useState(false);
+
     const [transactionType, setTransactionType] = useState("payment");
 
     // =====================================
@@ -283,12 +302,12 @@ const Dashboard = () => {
 
         const currentMonthTotal = rent + water + garbage + service;
 
-        // Charges from all months before the selected month
+        // Previous months' charges
         const previousCharges = Number(
             monthlyCharge?.previousCharges || 0
         );
 
-        // Payments made before the selected month
+        // Previous months' payments
         const previousPayments = payments
             .filter(
                 (payment) =>
@@ -306,7 +325,7 @@ const Dashboard = () => {
             0
         );
 
-        // Payments made during the selected month
+        // Selected month's payments
         const paid = selectedMonthPayments
             .filter((payment) => payment.apartmentId === apartment.id)
             .reduce(
@@ -314,12 +333,12 @@ const Dashboard = () => {
                 0
             );
 
-        // Current month charges + previous outstanding due
+        // Current charges + previous due
         const total = currentMonthTotal + previousDue;
 
         const remaining = Math.max(total - paid, 0);
 
-        // Check whether this apartment has any spending this month
+        // Check selected month spending
         const hasSpending = selectedMonthSpendings.some(
             (spending) => spending.apartmentId === apartment.id
         );
@@ -385,12 +404,17 @@ const Dashboard = () => {
     // =====================================
 
     const handleSaveApartment = async (apartmentData) => {
+        let apartmentId;
+
         try {
             if (selectedApartment) {
+                // Update existing apartment
                 const data = await updateApartment(
                     selectedApartment.id,
                     apartmentData
                 );
+
+                apartmentId = selectedApartment.id;
 
                 const updatedApartment = {
                     ...data.apartment,
@@ -401,13 +425,19 @@ const Dashboard = () => {
                     sortApartments(
                         previousApartments.map((apartment) =>
                             apartment.id === selectedApartment.id
-                                ? updatedApartment
+                                ? {
+                                    ...apartment,
+                                    ...updatedApartment,
+                                }
                                 : apartment
                         )
                     )
                 );
             } else {
+                // Create new apartment
                 const data = await createApartment(apartmentData);
+
+                apartmentId = data.apartment._id;
 
                 const newApartment = {
                     ...data.apartment,
@@ -419,15 +449,58 @@ const Dashboard = () => {
                 );
             }
 
+            // SAVE ALL FOUR BILLS TO MONTHLY CHARGES
+
+            await saveMonthlyCharge({
+                apartmentId,
+                month,
+                year,
+                rent: Number(apartmentData.rent || 0),
+                water: Number(apartmentData.water || 0),
+                garbage: Number(apartmentData.garbage || 0),
+                service: Number(apartmentData.service || 0),
+            });
+
+            // Refresh selected month's charges
+            await refreshMonthlyCharges();
+
             setIsApartmentModalOpen(false);
             setSelectedApartment(null);
+
+            await showSuccess(
+                selectedApartment
+                    ? "Apartment and monthly charges updated successfully!"
+                    : "Apartment and monthly charges added successfully!"
+            );
+
         } catch (error) {
             console.error("Save apartment error:", error);
 
-            alert(
+            // If creating the apartment succeeded but saving its
+            // monthly charges failed, try to remove the new apartment.
+            if (!selectedApartment && apartmentId) {
+                try {
+                    await deleteApartment(apartmentId);
+
+                    setApartments((previousApartments) =>
+                        previousApartments.filter(
+                            (item) => item.id !== apartmentId
+                        )
+                    );
+                } catch (deleteError) {
+                    console.error(
+                        "Could not roll back apartment creation:",
+                        deleteError
+                    );
+                }
+            }
+
+            showError(
                 error.response?.data?.message ||
-                "Failed to save apartment. Please try again."
+                "Failed to save apartment or monthly charges. Please try again."
             );
+
+            throw error;
         }
     };
 
@@ -436,11 +509,11 @@ const Dashboard = () => {
     // =====================================
 
     const handleDeleteApartment = async (apartment) => {
-        const confirmed = window.confirm(
+        const result = await showConfirm(
             `Are you sure you want to delete ${apartment.name}? Its payment and spending history may also become disconnected.`
         );
 
-        if (!confirmed) return;
+        if (!result.isConfirmed) return;
 
         try {
             await deleteApartment(apartment.id);
@@ -468,10 +541,13 @@ const Dashboard = () => {
                     (item) => item.apartmentId !== apartment.id
                 )
             );
+
+            await showSuccess("Apartment deleted successfully!");
+
         } catch (error) {
             console.error("Delete apartment error:", error);
 
-            alert(
+            showError(
                 error.response?.data?.message ||
                 "Failed to delete apartment."
             );
@@ -518,9 +594,11 @@ const Dashboard = () => {
                 const formattedPayment = {
                     id: savedPayment._id,
                     apartmentId:
-                        savedPayment.apartment?._id || transaction.apartmentId,
+                        savedPayment.apartment?._id ||
+                        transaction.apartmentId,
                     apartmentName:
-                        savedPayment.apartment?.name || transaction.apartmentName,
+                        savedPayment.apartment?.name ||
+                        transaction.apartmentName,
                     amount: Number(savedPayment.amount),
                     date: savedPayment.date?.slice(0, 10),
                     description: savedPayment.description || "",
@@ -545,9 +623,11 @@ const Dashboard = () => {
                 const formattedSpending = {
                     id: savedSpending._id,
                     apartmentId:
-                        savedSpending.apartment?._id || transaction.apartmentId,
+                        savedSpending.apartment?._id ||
+                        transaction.apartmentId,
                     apartmentName:
-                        savedSpending.apartment?.name || transaction.apartmentName,
+                        savedSpending.apartment?.name ||
+                        transaction.apartmentName,
                     amount: Number(savedSpending.amount),
                     date: savedSpending.date?.slice(0, 10),
                     description: savedSpending.description || "",
@@ -562,10 +642,17 @@ const Dashboard = () => {
 
             setIsTransactionModalOpen(false);
             setSelectedApartment(null);
+
+            await showSuccess(
+                transactionType === "payment"
+                    ? "Payment added successfully!"
+                    : "Spending added successfully!"
+            );
+
         } catch (error) {
             console.error("Save transaction error:", error);
 
-            alert(
+            showError(
                 error.response?.data?.message ||
                 "Failed to save transaction. Please try again."
             );

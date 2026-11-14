@@ -1,189 +1,239 @@
-import React, { useState} from "react";
-function ApartmentModal({
-  isOpen,
-  onClose,
-  onSave,
-  apartment
-}) {
-  const [formData, setFormData] = useState(() => ({
-    name: apartment?.name || "",
-    rent: apartment?.rent ?? "",
-    water: apartment?.water ?? "",
-    garbage: apartment?.garbage ?? "",
-    service: apartment?.service ?? ""
-  }));
 
-  React.useEffect(() => {
-    if (apartment) {
-      setFormData({
-        name: apartment.name,
-        rent: apartment.rent,
-        water: apartment.water,
-        garbage: apartment.garbage,
-        service: apartment.service
-      });
-    } else {
-      setFormData({
+import { useEffect, useState } from "react";
+import { showWarning } from "../utils/swal";
+
+function ApartmentModal({
+    isOpen,
+    onClose,
+    onSave,
+    apartment,
+}) {
+    const [formData, setFormData] = useState({
         name: "",
         rent: "",
         water: "",
         garbage: "",
-        service: ""
-      });
-    }
-  }, [apartment, isOpen]);
+        service: "",
+    });
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
+    const [saving, setSaving] = useState(false);
 
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value
-    }));
-  };
+    useEffect(() => {
+        if (apartment) {
+            setFormData({
+                name: apartment.name || "",
+                rent: apartment.rent ?? "",
+                water: apartment.water ?? "",
+                garbage: apartment.garbage ?? "",
+                service: apartment.service ?? "",
+            });
+        } else {
+            setFormData({
+                name: "",
+                rent: "",
+                water: "",
+                garbage: "",
+                service: "",
+            });
+        }
+    }, [apartment, isOpen]);
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
+    const handleChange = (e) => {
+        const { name, value } = e.target;
 
-    const apartmentData = {
-      name: formData.name.trim(),
-      rent: Number(formData.rent),
-      water: Number(formData.water),
-      garbage: Number(formData.garbage),
-      service: Number(formData.service)
+        setFormData((previous) => ({
+            ...previous,
+            [name]: value,
+        }));
     };
 
-    if (
-      !apartmentData.name ||
-      !Number.isFinite(apartmentData.rent) ||
-      apartmentData.rent <= 0 ||
-      !Number.isFinite(apartmentData.water) ||
-      apartmentData.water < 0 ||
-      !Number.isFinite(apartmentData.garbage) ||
-      apartmentData.garbage < 0 ||
-      !Number.isFinite(apartmentData.service) ||
-      apartmentData.service < 0
-    ) {
-      alert("Please enter valid apartment information.");
-      return;
-    }
+    const handleSubmit = async (e) => {
+        e.preventDefault();
 
-    onSave(apartmentData);
-    onClose();
-  };
+        const apartmentData = {
+            name: formData.name.trim(),
+            rent: Number(formData.rent),
+            water: Number(formData.water),
+            garbage: Number(formData.garbage),
+            service: Number(formData.service),
+        };
 
-  if (!isOpen) return null;
+        if (
+            !apartmentData.name ||
+            !Number.isFinite(apartmentData.rent) ||
+            apartmentData.rent <= 0 ||
+            !Number.isFinite(apartmentData.water) ||
+            apartmentData.water < 0 ||
+            !Number.isFinite(apartmentData.garbage) ||
+            apartmentData.garbage < 0 ||
+            !Number.isFinite(apartmentData.service) ||
+            apartmentData.service < 0
+        ) {
+            showWarning("Please enter valid apartment information.");
+            return;
+        }
 
-  return (
-    <dialog open className="modal modal-open">
-      <div className="modal-box max-w-lg">
+        try {
+            setSaving(true);
 
-        <h3 className="font-bold text-xl mb-5">
-          {apartment ? "Edit Apartment" : "Add Apartment"}
-        </h3>
+            await onSave(apartmentData);
 
-        <form onSubmit={handleSubmit}>
+        } catch (error) {
+            console.error("Apartment save failed:", error);
+        } finally {
+            setSaving(false);
+        }
+    };
 
-          <div className="space-y-3">
+    if (!isOpen) return null;
 
-            <label className="form-control w-full">
-              <span className="label-text mb-1">
-                Apartment Name
-              </span>
-              <input
-                type="text"
-                name="name"
-                placeholder="Example: 1A"
-                className="input input-bordered w-full"
-                value={formData.name}
-                onChange={handleChange}
-                required
-              />
-            </label>
+    return (
+        <dialog open className="modal modal-open">
+            <div className="modal-box max-w-lg">
 
-            <label className="form-control w-full">
-              <span className="label-text mb-1">Rent</span>
-              <input
-                type="number"
-                name="rent"
-                min="1"
-                className="input input-bordered w-full"
-                value={formData.rent}
-                onChange={handleChange}
-                required
-              />
-            </label>
+                <h3 className="font-bold text-xl mb-5">
+                    {apartment ? "Edit Apartment" : "Add Apartment"}
+                </h3>
 
-            <label className="form-control w-full">
-              <span className="label-text mb-1">Water Bill</span>
-              <input
-                type="number"
-                name="water"
-                min="0"
-                className="input input-bordered w-full"
-                value={formData.water}
-                onChange={handleChange}
-                required
-              />
-            </label>
+                <form onSubmit={handleSubmit}>
 
-            <label className="form-control w-full">
-              <span className="label-text mb-1">Garbage Bill</span>
-              <input
-                type="number"
-                name="garbage"
-                min="0"
-                className="input input-bordered w-full"
-                value={formData.garbage}
-                onChange={handleChange}
-                required
-              />
-            </label>
+                    <div className="space-y-3">
 
-            <label className="form-control w-full">
-              <span className="label-text mb-1">
-                Service Charge
-              </span>
-              <input
-                type="number"
-                name="service"
-                min="0"
-                className="input input-bordered w-full"
-                value={formData.service}
-                onChange={handleChange}
-                required
-              />
-            </label>
+                        <label className="form-control w-full">
+                            <span className="label-text mb-1">
+                                Apartment Name
+                            </span>
 
-          </div>
+                            <input
+                                type="text"
+                                name="name"
+                                placeholder="Example: 1A"
+                                className="input input-bordered w-full"
+                                value={formData.name}
+                                onChange={handleChange}
+                                required
+                                disabled={saving}
+                            />
+                        </label>
 
-          <div className="modal-action">
+                        <label className="form-control w-full">
+                            <span className="label-text mb-1">
+                                House Rent
+                            </span>
 
-            <button
-              type="button"
-              className="btn"
-              onClick={onClose}
-            >
-              Cancel
-            </button>
+                            <input
+                                type="number"
+                                name="rent"
+                                min="1"
+                                step="0.01"
+                                className="input input-bordered w-full"
+                                value={formData.rent}
+                                onChange={handleChange}
+                                required
+                                disabled={saving}
+                            />
+                        </label>
 
-            <button type="submit" className="btn btn-primary">
-              {apartment ? "Update Apartment" : "Add Apartment"}
-            </button>
+                        <label className="form-control w-full">
+                            <span className="label-text mb-1">
+                                Water Bill
+                            </span>
 
-          </div>
+                            <input
+                                type="number"
+                                name="water"
+                                min="0"
+                                step="0.01"
+                                className="input input-bordered w-full"
+                                value={formData.water}
+                                onChange={handleChange}
+                                required
+                                disabled={saving}
+                            />
+                        </label>
 
-        </form>
-      </div>
+                        <label className="form-control w-full">
+                            <span className="label-text mb-1">
+                                Garbage Bill
+                            </span>
 
-      <div
-        className="modal-backdrop"
-        onClick={onClose}
-      >
-        <button type="button">close</button>
-      </div>
-    </dialog>
-  );
+                            <input
+                                type="number"
+                                name="garbage"
+                                min="0"
+                                step="0.01"
+                                className="input input-bordered w-full"
+                                value={formData.garbage}
+                                onChange={handleChange}
+                                required
+                                disabled={saving}
+                            />
+                        </label>
+
+                        <label className="form-control w-full">
+                            <span className="label-text mb-1">
+                                Service Charge
+                            </span>
+
+                            <input
+                                type="number"
+                                name="service"
+                                min="0"
+                                step="0.01"
+                                className="input input-bordered w-full"
+                                value={formData.service}
+                                onChange={handleChange}
+                                required
+                                disabled={saving}
+                            />
+                        </label>
+
+                    </div>
+
+                    <div className="modal-action">
+
+                        <button
+                            type="button"
+                            className="btn"
+                            onClick={onClose}
+                            disabled={saving}
+                        >
+                            Cancel
+                        </button>
+
+                        <button
+                            type="submit"
+                            className="btn btn-primary"
+                            disabled={saving}
+                        >
+                            {saving ? (
+                                <>
+                                    <span className="loading loading-spinner loading-sm"></span>
+                                    Saving...
+                                </>
+                            ) : (
+                                apartment
+                                    ? "Update Apartment"
+                                    : "Add Apartment"
+                            )}
+                        </button>
+
+                    </div>
+
+                </form>
+            </div>
+
+            <div className="modal-backdrop">
+                <button
+                    type="button"
+                    onClick={onClose}
+                    disabled={saving}
+                >
+                    Close
+                </button>
+            </div>
+        </dialog>
+    );
 }
 
 export default ApartmentModal;
