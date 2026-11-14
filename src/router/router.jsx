@@ -26,7 +26,7 @@ const router = createBrowserRouter(
     },
   ],
   {
-    basename: "/House-Rental-Management-User",
+    basename: import.meta.env.BASE_URL.replace(/\/$/, "") || "/",
   }
 );
 
