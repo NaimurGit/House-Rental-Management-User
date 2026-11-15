@@ -27,24 +27,43 @@ const ApartmentCard = ({
         `৳${Number(amount || 0).toLocaleString("en-BD")}`;
 
     const cardStatus = isRed
-        ? "border-error"
-        : "border-success";
+        ? "border-error/40"
+        : "border-success/40";
+
+    const detailRows = [
+        { label: "House Rent", value: rent },
+        { label: "Water Bill", value: water },
+        { label: "Garbage Bill", value: garbage },
+        { label: "Service Charge", value: service },
+    ];
 
     return (
         <div
-            className={`card bg-base-100 border-2 ${cardStatus} shadow-sm hover:shadow-md transition-shadow`}
+            className={`card bg-base-100 border-2 ${cardStatus} rounded-2xl shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 flex-1`}
         >
             <div className="card-body p-5">
 
                 {/* Card Header */}
-                <div className="flex justify-between items-center mb-3">
-                    <div>
-                        <h2 className="card-title text-lg font-semibold">
-                            {name}
-                        </h2>
+                <div className="flex justify-between items-start gap-3 mb-4">
+                    <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                            <h2 className="card-title text-lg font-bold truncate">
+                                {name}
+                            </h2>
 
-                        <p className="text-xs text-base-content/50">
-                            Apartment details
+                            <span
+                                className={`badge badge-sm font-semibold ${
+                                    isRed
+                                        ? "badge-error"
+                                        : "badge-success"
+                                }`}
+                            >
+                                {isRed ? "Due" : "Paid"}
+                            </span>
+                        </div>
+
+                        <p className="text-xs text-base-content/50 mt-1">
+                            Monthly bill summary
                         </p>
                     </div>
 
@@ -59,7 +78,7 @@ const ApartmentCard = ({
                 {/* Monthly Charges Button */}
                 <button
                     onClick={() => onEditCharges(apartment)}
-                    className="btn btn-sm btn-outline btn-primary w-full"
+                    className="btn btn-sm btn-outline btn-primary w-full rounded-xl"
                 >
                     Edit Monthly Charges
                 </button>
@@ -68,41 +87,19 @@ const ApartmentCard = ({
 
                 {/* Rent Details */}
                 <div className="space-y-3">
-                    <div className="flex justify-between text-sm">
-                        <span className="text-base-content/60">
-                            House Rent
-                        </span>
-                        <span className="font-medium">
-                            {formatCurrency(rent)}
-                        </span>
-                    </div>
-
-                    <div className="flex justify-between text-sm">
-                        <span className="text-base-content/60">
-                            Water Bill
-                        </span>
-                        <span className="font-medium">
-                            {formatCurrency(water)}
-                        </span>
-                    </div>
-
-                    <div className="flex justify-between text-sm">
-                        <span className="text-base-content/60">
-                            Garbage Bill
-                        </span>
-                        <span className="font-medium">
-                            {formatCurrency(garbage)}
-                        </span>
-                    </div>
-
-                    <div className="flex justify-between text-sm">
-                        <span className="text-base-content/60">
-                            Service Charge
-                        </span>
-                        <span className="font-medium">
-                            {formatCurrency(service)}
-                        </span>
-                    </div>
+                    {detailRows.map((row) => (
+                        <div
+                            key={row.label}
+                            className="flex justify-between text-sm"
+                        >
+                            <span className="text-base-content/60">
+                                {row.label}
+                            </span>
+                            <span className="font-medium">
+                                {formatCurrency(row.value)}
+                            </span>
+                        </div>
+                    ))}
 
                     {due > 0 && (
                         <div className="flex justify-between text-sm">
@@ -120,7 +117,7 @@ const ApartmentCard = ({
 
                 {/* Total Amount */}
                 <div className="flex justify-between items-center">
-                    <span className="font-semibold">
+                    <span className="font-semibold text-base-content/70">
                         Total Amount
                     </span>
 
@@ -130,8 +127,8 @@ const ApartmentCard = ({
                 </div>
 
                 {/* Paid Amount */}
-                <div className="flex justify-between items-center text-sm">
-                    <span className="text-success">
+                <div className="flex justify-between items-center text-sm mt-1">
+                    <span className="text-success font-medium">
                         Paid Amount
                     </span>
 
@@ -141,7 +138,13 @@ const ApartmentCard = ({
                 </div>
 
                 {/* Remaining Amount */}
-                <div className="flex justify-between items-center mt-2 p-3 rounded-lg bg-base-200">
+                <div
+                    className={`flex justify-between items-center mt-3 p-3 rounded-xl ${
+                        remaining > 0
+                            ? "bg-error/10"
+                            : "bg-success/10"
+                    }`}
+                >
                     <span className="font-semibold text-sm">
                         Remaining Due
                     </span>
@@ -159,7 +162,8 @@ const ApartmentCard = ({
 
                 {/* Spending Status */}
                 {hasSpending && (
-                    <p className="text-xs text-error font-medium mt-1">
+                    <p className="text-xs text-error font-medium mt-2 flex items-center gap-1">
+                        <span>⚠</span>
                         This apartment has spending in the selected month.
                     </p>
                 )}

@@ -17,7 +17,7 @@ const ApartmentMenu = ({
 
       <ul
         tabIndex={0}
-        className="dropdown-content menu bg-base-100 rounded-box z-50 mt-2 w-60 p-2 shadow-lg border border-base-200"
+        className="dropdown-content menu bg-base-100 rounded-box z-50 mt-2 w-60 max-w-[calc(100vw-2rem)] p-2 shadow-lg border border-base-200"
       >
         <li>
           <button onClick={onShowPayments}>

@@ -904,102 +904,115 @@ const Dashboard = () => {
     // =====================================
 
     return (
-        <div className="min-h-screen bg-base-200">
+        <div className="min-h-screen bg-gradient-to-b from-base-200 to-base-100">
             <Navbar />
 
-            <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
 
-                {/* Dashboard Header */}
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
+                {/* Dashboard Hero Header */}
+                <div className="relative rounded-3xl bg-gradient-to-br from-primary via-primary to-secondary text-primary-content p-5 sm:p-8 mb-8 shadow-lg">
 
-                    <div>
-                        <h1 className="text-2xl sm:text-3xl font-bold">
-                            Dashboard
-                        </h1>
-
-                        <p className="text-base-content/60 mt-1">
-                            Manage your apartments, payments and spendings.
-                        </p>
+                    {/* Decorative background */}
+                    <div className="absolute inset-0 rounded-3xl overflow-hidden pointer-events-none">
+                        <div className="absolute -top-16 -right-10 w-56 h-56 bg-white/10 rounded-full blur-3xl" />
+                        <div className="absolute -bottom-20 -left-10 w-56 h-56 bg-white/10 rounded-full blur-3xl" />
                     </div>
 
-                    {/* THREE DOT MENU */}
-                    <div className="relative">
+                    <div className="relative flex items-start justify-between gap-4">
 
-                        <button
-                            onClick={() =>
-                                setIsMenuOpen((previous) => !previous)
-                            }
-                            className="btn btn-square btn-outline"
-                            aria-label="Dashboard options"
-                            aria-expanded={isMenuOpen}
-                        >
-                            <span className="text-2xl leading-none">
-                                ⋮
-                            </span>
-                        </button>
+                        <div className="min-w-0">
+                            <p className="text-primary-content/70 text-xs sm:text-sm font-medium tracking-wide uppercase">
+                                {getMonthName()} {year}
+                            </p>
 
-                        {isMenuOpen && (
-                            <>
-                                <button
-                                    type="button"
-                                    className="fixed inset-0 z-40 cursor-default"
-                                    onClick={() => setIsMenuOpen(false)}
-                                    aria-label="Close menu"
-                                />
+                            <h1 className="text-2xl sm:text-3xl font-bold mt-1">
+                                Dashboard
+                            </h1>
 
-                                <div className="absolute right-0 top-full mt-2 w-64 bg-base-100 rounded-xl shadow-xl border border-base-300 z-50 p-2">
+                            <p className="text-primary-content/80 mt-1 text-sm sm:text-base">
+                                Manage your apartments, payments and spendings.
+                            </p>
+                        </div>
 
+                        {/* THREE DOT MENU */}
+                        <div className="relative shrink-0">
+
+                            <button
+                                onClick={() =>
+                                    setIsMenuOpen((previous) => !previous)
+                                }
+                                className="btn btn-circle btn-ghost bg-white/15 hover:bg-white/25 text-primary-content border-0 backdrop-blur"
+                                aria-label="Dashboard options"
+                                aria-expanded={isMenuOpen}
+                            >
+                                <span className="text-2xl leading-none">
+                                    ⋮
+                                </span>
+                            </button>
+
+                            {isMenuOpen && (
+                                <>
                                     <button
-                                        onClick={() => {
-                                            setIsMenuOpen(false);
-                                            handleAddApartment();
-                                        }}
-                                        className="w-full text-left px-4 py-3 rounded-lg hover:bg-base-200 flex items-center gap-3"
-                                    >
-                                        <span className="text-lg">＋</span>
-                                        Add Apartment
-                                    </button>
+                                        type="button"
+                                        className="fixed inset-0 z-40 cursor-default"
+                                        onClick={() => setIsMenuOpen(false)}
+                                        aria-label="Close menu"
+                                    />
 
-                                    <div className="divider my-1"></div>
+                                    <div className="absolute right-0 top-full mt-2 w-64 max-w-[calc(100vw-2.5rem)] bg-base-100 text-base-content rounded-2xl shadow-2xl border border-base-300 z-50 p-2">
 
-                                    <button
-                                        onClick={handleExportPDF}
-                                        className="w-full text-left px-4 py-3 rounded-lg hover:bg-base-200 flex items-center gap-3"
-                                    >
-                                        <span>📄</span>
-                                        Print Monthly Bill (PDF)
-                                    </button>
+                                        <button
+                                            onClick={() => {
+                                                setIsMenuOpen(false);
+                                                handleAddApartment();
+                                            }}
+                                            className="w-full text-left px-4 py-3 rounded-xl hover:bg-base-200 flex items-center gap-3 font-medium"
+                                        >
+                                            <span className="text-lg">＋</span>
+                                            Add Apartment
+                                        </button>
 
-                                    <button
-                                        onClick={handleExportExcel}
-                                        className="w-full text-left px-4 py-3 rounded-lg hover:bg-base-200 flex items-center gap-3"
-                                    >
-                                        <span>📊</span>
-                                        Export Monthly Bill (Excel)
-                                    </button>
+                                        <div className="divider my-1"></div>
 
-                                    <div className="divider my-1"></div>
+                                        <button
+                                            onClick={handleExportPDF}
+                                            className="w-full text-left px-4 py-3 rounded-xl hover:bg-base-200 flex items-center gap-3 font-medium"
+                                        >
+                                            <span>📄</span>
+                                            Print Monthly Bill (PDF)
+                                        </button>
 
-                                    <button
-                                        onClick={handleShowGeneralSpendings}
-                                        className="w-full text-left px-4 py-3 rounded-lg hover:bg-base-200 flex items-center gap-3"
-                                    >
-                                        <span>📋</span>
-                                        Show General Spending
-                                    </button>
+                                        <button
+                                            onClick={handleExportExcel}
+                                            className="w-full text-left px-4 py-3 rounded-xl hover:bg-base-200 flex items-center gap-3 font-medium"
+                                        >
+                                            <span>📊</span>
+                                            Export Monthly Bill (Excel)
+                                        </button>
 
-                                    <button
-                                        onClick={handleAddGeneralSpending}
-                                        className="w-full text-left px-4 py-3 rounded-lg hover:bg-base-200 flex items-center gap-3"
-                                    >
-                                        <span>＋</span>
-                                        Add General Spending
-                                    </button>
+                                        <div className="divider my-1"></div>
 
-                                </div>
-                            </>
-                        )}
+                                        <button
+                                            onClick={handleShowGeneralSpendings}
+                                            className="w-full text-left px-4 py-3 rounded-xl hover:bg-base-200 flex items-center gap-3 font-medium"
+                                        >
+                                            <span>📋</span>
+                                            Show General Spending
+                                        </button>
 
+                                        <button
+                                            onClick={handleAddGeneralSpending}
+                                            className="w-full text-left px-4 py-3 rounded-xl hover:bg-base-200 flex items-center gap-3 font-medium"
+                                        >
+                                            <span>＋</span>
+                                            Add General Spending
+                                        </button>
+
+                                    </div>
+                                </>
+                            )}
+
+                        </div>
                     </div>
                 </div>
 
@@ -1023,14 +1036,20 @@ const Dashboard = () => {
                 </div>
 
                 {/* Apartment Heading */}
-                <div className="mb-5">
-                    <h2 className="text-xl font-bold">
-                        Apartments
-                    </h2>
+                <div className="flex items-center justify-between gap-3 mb-5">
+                    <div>
+                        <h2 className="text-xl sm:text-2xl font-bold">
+                            Apartments
+                        </h2>
 
-                    <p className="text-sm text-base-content/60 mt-1">
-                        Total {apartments.length} apartments
-                    </p>
+                        <p className="text-sm text-base-content/60 mt-1">
+                            Manage each apartment and its monthly bill.
+                        </p>
+                    </div>
+
+                    <span className="badge badge-primary badge-lg font-semibold shrink-0">
+                        {apartments.length}
+                    </span>
                 </div>
 
                 {loading ? (
@@ -1041,7 +1060,7 @@ const Dashboard = () => {
                         </span>
                     </div>
                 ) : error ? (
-                    <div className="bg-base-100 rounded-xl border border-error p-8 text-center">
+                    <div className="bg-base-100 rounded-2xl border border-error p-8 text-center shadow-sm">
 
                         <h3 className="text-lg font-semibold text-error">
                             Something went wrong
@@ -1060,10 +1079,10 @@ const Dashboard = () => {
 
                     </div>
                 ) : apartments.length > 0 ? (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
 
                         {apartmentsWithFinancialData.map((apartment) => (
-                            <div key={apartment.id}>
+                            <div key={apartment.id} className="flex flex-col">
 
                                 <ApartmentCard
                                     apartment={apartment}
@@ -1074,13 +1093,13 @@ const Dashboard = () => {
                                     onEditCharges={handleEditCharges}
                                 />
 
-                                <div className="flex justify-end gap-2 mt-2">
+                                <div className="flex justify-end gap-2 mt-3">
 
                                     <button
                                         onClick={() =>
                                             handleEditApartment(apartment)
                                         }
-                                        className="btn btn-sm btn-outline btn-info"
+                                        className="btn btn-sm btn-outline btn-info rounded-full px-5"
                                     >
                                         Edit
                                     </button>
@@ -1089,7 +1108,7 @@ const Dashboard = () => {
                                         onClick={() =>
                                             handleDeleteApartment(apartment)
                                         }
-                                        className="btn btn-sm btn-outline btn-error"
+                                        className="btn btn-sm btn-outline btn-error rounded-full px-5"
                                     >
                                         Delete
                                     </button>
@@ -1100,7 +1119,9 @@ const Dashboard = () => {
 
                     </div>
                 ) : (
-                    <div className="bg-base-100 rounded-xl border border-base-300 p-10 text-center">
+                    <div className="bg-base-100 rounded-2xl border border-dashed border-base-300 p-10 text-center shadow-sm">
+
+                        <div className="text-5xl mb-4">🏢</div>
 
                         <h3 className="text-lg font-semibold">
                             No Apartments Found
